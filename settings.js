@@ -19,5 +19,6 @@ window.COIN_DASH = {
     slowMs: 5000, slowFactor: 0.4,
     colors: { shield: 0x5aa9ff, slow: 0xc792ff }
   },
+  audio: { volume: 0.15, storageKey: 'coinDash.muted' },
   colors: { background: 0x101c31, player: 0x71e8ce, coin: 0xffd166, drone: 0xff657a }
 };
