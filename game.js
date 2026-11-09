@@ -102,7 +102,7 @@ class CoinDash extends Phaser.Scene {
     if (isNewBest) { this.best = this.score; saveBest(this.score); }
     this.add.rectangle(c.width / 2, c.height / 2, 460, 150, 0x0a1120, 0.95);
     this.add.text(c.width / 2, c.height / 2,
-      `${reason}\n${this.score} coins collected\nPress R to try again`,
+      `${reason}\n${this.score} coins collected${isNewBest ? ' - New best!' : ''}\nPress R to try again`,
       { font: '24px monospace', color: '#ffffff', align: 'center', lineSpacing: 12 }
     ).setOrigin(0.5);
   }
