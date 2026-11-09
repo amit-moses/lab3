@@ -171,17 +171,19 @@ class CoinDash extends Phaser.Scene {
 
   startSlow() {
     const pu = this.pu, p = COIN_DASH.powerups;
-    if (!pu.slowUntil) this.scaleDrones(p.slowFactor);
+    this.setDroneSpeed(p.slowFactor);
     pu.slowUntil = pu.clock + p.slowMs;
   }
 
   endSlow() {
-    this.scaleDrones(1 / COIN_DASH.powerups.slowFactor);
+    this.setDroneSpeed(1);
     this.pu.slowUntil = 0;
   }
 
-  scaleDrones(f) {
-    this.drones.getChildren().forEach(d => d.body.velocity.scale(f));
+  // Drones keep their direction; speed is the active level's droneSpeed times the factor.
+  setDroneSpeed(factor) {
+    const speed = COIN_DASH.levels[activeLevel].droneSpeed * factor;
+    this.drones.getChildren().forEach(d => d.body.velocity.setLength(speed));
   }
 
   endShield() {
