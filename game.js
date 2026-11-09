@@ -55,7 +55,7 @@ class CoinDash extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.drones, () => {
       if (this.absorbDroneHit()) return;
-      this.finish('A drone caught you!');
+      this.finish('A drone caught you!', 'gameOver');
     });
     this.initPowerups();
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -116,7 +116,7 @@ class CoinDash extends Phaser.Scene {
     this.hud.setText(`Coins: ${this.score}        Time: ${seconds}s`);
     this.hudInfo.setText(`Level: ${COIN_DASH.levels[activeLevel].label}   Best: ${this.best}`);
     this.hudPower.setText(this.powerupHud().trim());
-    if (seconds === 0) this.finish('Time is up!');
+    if (seconds === 0) this.finish('Time is up!', 'timeUp');
   }
 
   // --- Power-ups. Timers run on this.pu.clock, which only advances while the game is
@@ -165,6 +165,7 @@ class CoinDash extends Phaser.Scene {
     if (item !== pu.item || this.finished) return;
     if (pu.kind === 'shield') pu.shieldUntil = pu.clock + p.shieldMs;
     else this.startSlow();
+    this.playSound('powerup');
     this.removePowerupItem();
   }
 
@@ -193,6 +194,7 @@ class CoinDash extends Phaser.Scene {
     if (pu.clock < pu.graceUntil) return true;
     if (!pu.shieldUntil) return false;
     this.endShield();
+    this.playSound('shield');
     pu.graceUntil = pu.clock + COIN_DASH.powerups.shieldGraceMs;
     return true;
   }
@@ -237,7 +239,9 @@ class CoinDash extends Phaser.Scene {
     const notes = {
       coin: [[880, 0, 0.08, 'square'], [1320, 0.07, 0.1, 'square']],
       gameOver: [[330, 0, 0.18, 'sawtooth'], [220, 0.18, 0.18, 'sawtooth'], [147, 0.36, 0.35, 'sawtooth']],
-      timeUp: [[523, 0, 0.15, 'triangle'], [392, 0.17, 0.3, 'triangle']]
+      timeUp: [[523, 0, 0.15, 'triangle'], [392, 0.17, 0.3, 'triangle']],
+      powerup: [[587, 0, 0.09, 'triangle'], [880, 0.08, 0.14, 'triangle']],
+      shield: [[110, 0, 0.2, 'sine']]
     }[name];
     const t0 = ctx.currentTime;
     notes.forEach(([freq, at, dur, type]) => {
@@ -253,10 +257,10 @@ class CoinDash extends Phaser.Scene {
     });
   }
 
-  finish(reason) {
+  finish(reason, sound = 'gameOver') {
     if (this.finished) return;
     this.finished = true;
-    this.playSound(reason === 'Time is up!' ? 'timeUp' : 'gameOver');
+    this.playSound(sound);
     this.physics.pause();
     const c = COIN_DASH;
     const isNewBest = this.score > this.best;
