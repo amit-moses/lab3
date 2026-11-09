@@ -29,11 +29,13 @@ class CoinDash extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
       this.score++;
+      this.playSound('coin');
       this.placeCoin();
     });
     this.physics.add.overlap(this.player, this.drones, () => this.finish('A drone caught you!'));
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
+    this.initAudio();
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
   }
 
@@ -62,9 +64,59 @@ class CoinDash extends Phaser.Scene {
     if (seconds === 0) this.finish('Time is up!');
   }
 
+  // --- Sound effects, synthesized with WebAudio (no audio files).
+  // The AudioContext is created on the first key press (browser autoplay rules).
+  initAudio() {
+    let muted = false;
+    try { muted = localStorage.getItem(COIN_DASH.audio.storageKey) === '1'; } catch (e) { /* default unmuted */ }
+    this.muted = muted;
+    this.muteLabel = this.add.text(COIN_DASH.width - 18, 12, 'Muted',
+      { font: '14px monospace', color: '#9fb0c8' }).setOrigin(1, 0).setVisible(this.muted);
+    this.input.keyboard.on('keydown', () => this.ensureAudio());
+    this.input.keyboard.on('keydown-M', () => {
+      this.muted = !this.muted;
+      this.muteLabel.setVisible(this.muted);
+      try { localStorage.setItem(COIN_DASH.audio.storageKey, this.muted ? '1' : '0'); } catch (e) { /* ignore */ }
+    });
+  }
+
+  ensureAudio() {
+    if (!window.coinDashAudio) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      window.coinDashAudio = new Ctx();
+    }
+    if (window.coinDashAudio.state === 'suspended') window.coinDashAudio.resume();
+    return window.coinDashAudio;
+  }
+
+  playSound(name) {
+    const ctx = window.coinDashAudio;
+    if (this.muted || !ctx || ctx.state !== 'running') return;
+    // [frequency Hz, start offset s, duration s, wave type]
+    const notes = {
+      coin: [[880, 0, 0.08, 'square'], [1320, 0.07, 0.1, 'square']],
+      gameOver: [[330, 0, 0.18, 'sawtooth'], [220, 0.18, 0.18, 'sawtooth'], [147, 0.36, 0.35, 'sawtooth']],
+      timeUp: [[523, 0, 0.15, 'triangle'], [392, 0.17, 0.3, 'triangle']]
+    }[name];
+    const t0 = ctx.currentTime;
+    notes.forEach(([freq, at, dur, type]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(COIN_DASH.audio.volume, t0 + at);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + at);
+      osc.stop(t0 + at + dur);
+    });
+  }
+
   finish(reason) {
     if (this.finished) return;
     this.finished = true;
+    this.playSound(reason === 'Time is up!' ? 'timeUp' : 'gameOver');
     this.physics.pause();
     const c = COIN_DASH;
     this.add.rectangle(c.width / 2, c.height / 2, 460, 150, 0x0a1120, 0.95);
