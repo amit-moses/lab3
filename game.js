@@ -1,4 +1,11 @@
 /* global Phaser, COIN_DASH */
+// Difficulty level persists across restarts; fall back to Normal if storage is blocked.
+let activeLevel = 'normal';
+try {
+  const saved = localStorage.getItem(COIN_DASH.levelKey);
+  if (COIN_DASH.levels[saved]) activeLevel = saved;
+} catch (e) { /* default level */ }
+
 class CoinDash extends Phaser.Scene {
   constructor() { super('CoinDash'); }
 
@@ -19,12 +26,13 @@ class CoinDash extends Phaser.Scene {
     this.coin.body.setCircle(9);
     this.placeCoin();
     this.drones = this.physics.add.group();
-    for (let i = 0; i < c.droneCount; i++) {
+    const level = COIN_DASH.levels[activeLevel];
+    for (let i = 0; i < level.droneCount; i++) {
       const drone = this.add.rectangle(90 + i * 270, 100, 26, 26, c.colors.drone);
       this.drones.add(drone);
       drone.body.setCollideWorldBounds(true).setBounce(1, 1);
       const angle = (35 + i * 105) * Math.PI / 180;
-      drone.body.setVelocity(Math.cos(angle) * c.droneSpeed, Math.sin(angle) * c.droneSpeed);
+      drone.body.setVelocity(Math.cos(angle) * level.droneSpeed, Math.sin(angle) * level.droneSpeed);
     }
     this.physics.add.overlap(this.player, this.coin, () => {
       if (this.finished) return;
@@ -35,6 +43,14 @@ class CoinDash extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,R');
     this.input.keyboard.on('keydown-R', () => this.scene.restart());
+    ['one', 'two', 'three'].forEach((name, i) =>
+      this.input.keyboard.on(`keydown-${name.toUpperCase()}`, () => this.setLevel(['easy', 'normal', 'hard'][i])));
+  }
+
+  setLevel(name) {
+    activeLevel = name;
+    try { localStorage.setItem(COIN_DASH.levelKey, name); } catch (e) { /* session-only */ }
+    this.scene.restart();
   }
 
   placeCoin() {
@@ -58,7 +74,7 @@ class CoinDash extends Phaser.Scene {
     const direction = new Phaser.Math.Vector2(dx, dy).normalize().scale(COIN_DASH.playerSpeed);
     this.player.body.setVelocity(direction.x, direction.y);
     const seconds = Math.max(0, Math.ceil((this.deadline - this.time.now) / 1000));
-    this.hud.setText(`Coins: ${this.score}                       Time: ${seconds}s`);
+    this.hud.setText(`Coins: ${this.score}                       Time: ${seconds}s   Level: ${COIN_DASH.levels[activeLevel].label}`);
     if (seconds === 0) this.finish('Time is up!');
   }
 
